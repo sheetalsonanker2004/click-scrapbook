@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CLICK Editor</title>
+
+  <!-- GOOGLE FONTS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Pacifico&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- INTERACT JS -->
+  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+
+  <!-- HTML2CANVAS -->
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+  <style>
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+    }
+
+    body{
+      font-family:'Poppins',sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,0.8), transparent 25%),
+        radial-gradient(circle at top right, rgba(255,255,255,0.55), transparent 20%),
+        linear-gradient(135deg,#ffd6e7,#ffe3ef,#fff0f6);
+      min-height:100vh;
+      color:#4b2e39;
+      overflow-x:hidden;
+      animation:bgFloat 10s ease-in-out infinite alternate,
+               pageFadeIn 0.8s ease-out;
+    }
+
+    @keyframes bgFloat{
+      0%{background-position:0% 50%}
+      100%{background-position:100% 50%}
+    }
+
+    @keyframes pageFadeIn{
+      0%{opacity:0; transform:translateY(10px);}
+      100%{opacity:1; transform:translateY(0);}
+    }
+
+    .sparkles{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      overflow:hidden;
+      z-index:0;
+    }
+
+    .sparkles span{
+      position:absolute;
+      width:10px;
+      height:10px;
+      background:rgba(255,255,255,0.9);
+      border-radius:50%;
+      filter:blur(1px);
+      animation: drift 12s linear infinite;
+      opacity:0.7;
+      box-shadow:0 0 14px rgba(255,182,193,0.65);
+    }
+
+    .sparkles span:nth-child(odd){
+      background:#ffd1e8;
+    }
+
+    @keyframes drift{
+      0%{transform:translateY(0) translateX(0) scale(0.8); opacity:0}
+      10%{opacity:1}
+      100%{transform:translateY(-120vh) translateX(40px) scale(1.3); opacity:0}
+    }
+
+    .topbar{
+      width:100%;
+      padding:20px 5%;
+      background:rgba(255,255,255,0.58);
+      backdrop-filter:blur(14px);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      box-shadow:0 4px 20px rgba(255,182,193,0.2);
+      position:sticky;
+      top:0;
+      z-index:1000;
+      border-bottom:1px solid rgba(255,255,255,0.6);
+    }
+
+    .topbar h1{
+      font-family:'Pacifico',cursive;
+      font-size:2.5rem;
+      color:#ff4f8b;
+      letter-spacing:2px;
+      text-shadow:0 2px 0 rgba(255,255,255,0.8);
+    }
+
+    .topbar button,
+    .tools button{
+      padding:14px 22px;
+      border:none;
+      background:linear-gradient(135deg,#ff7aa8,#ff4f8b);
+      color:white;
+      border-radius:16px;
+      cursor:pointer;
+      transition:0.3s;
+      font-size:0.95rem;
+      box-shadow:0 8px 18px rgba(255,79,139,0.25);
+      font-family:'Poppins',sans-serif;
+    }
+
+    .topbar button:hover,
+    .tools button:hover{
+      transform:translateY(-3px) scale(1.03);
+      box-shadow:0 12px 26px rgba(255,79,139,0.28);
+    }
+
+    .topbar button:hover{
+      animation: wiggle 0.5s ease-in-out;
+    }
+
+    @keyframes wiggle{
+      0%{transform:translateY(-3px) rotate(0deg);}
+      25%{transform:translateY(-3px) rotate(-2deg);}
+      50%{transform:translateY(-3px) rotate(2deg);}
+      75%{transform:translateY(-3px) rotate(-1deg);}
+      100%{transform:translateY(-3px) rotate(0deg);}
+    }
+
+    .editor-layout{
+      width:100%;
+      display:flex;
+      gap:30px;
+      padding:40px 5%;
+      flex-wrap:wrap;
+      position:relative;
+      z-index:1;
+      transition:padding 0.3s ease;
+    }
+
+    .sidebar{
+      width:320px;
+      background:rgba(255,255,255,0.68);
+      backdrop-filter:blur(16px);
+      padding:25px;
+      border-radius:28px;
+      box-shadow:0 8px 30px rgba(255,182,193,0.18);
+      border:1px solid rgba(255,255,255,0.5);
+      height:fit-content;
+      animation: floatCard 5s ease-in-out infinite;
+      position:relative;
+    }
+
+    @keyframes floatCard{
+      0%,100%{transform:translateY(0px)}
+      50%{transform:translateY(-6px)}
+    }
+
+    .sidebar h2{
+      font-family:'Dancing Script',cursive;
+      font-size:2.2rem;
+      color:#ff4f8b;
+      margin-bottom:10px;
+    }
+
+    .sidebar label{
+      font-size:0.9rem;
+      font-weight:600;
+      color:#7b5c67;
+      margin-top:14px;
+      display:block;
+    }
+
+    .cute-line{
+      font-family:'Dancing Script',cursive;
+      font-size:1.35rem;
+      color:#ff4f8b;
+      letter-spacing:0.5px;
+      line-height:1.9;
+      text-shadow:0 2px 0 rgba(255,255,255,0.9),
+                  0 0 12px rgba(255,120,170,0.4);
+      animation: floatText 4s ease-in-out infinite;
+      margin-top:15px;
+    }
+
+    @keyframes floatText{
+      0%,100%{transform:translateY(0)}
+      50%{transform:translateY(-2px)}
+    }
+
+    .sidebar input[type="file"]{
+      width:100%;
+      margin-top:6px;
+      padding:10px;
+      border-radius:12px;
+      border:1px solid #f3bfd0;
+      background:#fff8fb;
+      font-size:0.85rem;
+    }
+
+    .sidebar input[type="text"]{
+      width:100%;
+      margin-top:6px;
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid #f3bfd0;
+      background:#fff8fb;
+      font-size:0.8rem;
+    }
+
+    .tools{
+      margin-top:20px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .tools button{
+      width:100%;
+    }
+
+    .zoom-controls{
+      display:flex;
+      gap:12px;
+      margin-top:15px;
+      flex-wrap:wrap;
+    }
+
+    .zoom-controls button{
+      flex:1;
+      min-width:120px;
+      padding:13px 16px;
+    }
+
+    .hint{
+      margin-top:12px;
+      font-family:'Dancing Script',cursive;
+      color:#ff4f8b;
+      font-size:1.25rem;
+    }
+
+    .canvas-area{
+      flex:1;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      transition:justify-content 0.3s ease;
+    }
+
+    /* CUTE FRAME AROUND TEMPLATE */
+    .frame-wrapper{
+      padding:18px 18px 26px;
+      border-radius:36px;
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,0.95), transparent 55%),
+        radial-gradient(circle at bottom right, rgba(255,200,220,0.9), transparent 55%),
+        linear-gradient(135deg,#ffe4f1,#ffeef8);
+      box-shadow:0 14px 40px rgba(255,105,180,0.25);
+      border:2px solid rgba(255,255,255,0.9);
+      position:relative;
+      max-width:440px;
+    }
+
+    .frame-label{
+      position:absolute;
+      left:22px;
+      top:10px;
+      font-family:'Dancing Script',cursive;
+      font-size:1.3rem;
+      color:#ff4f8b;
+      opacity:0.85;
+    }
+
+    .frame-heart{
+      position:absolute;
+      right:22px;
+      top:12px;
+      font-size:1.2rem;
+      color:#ff4f8b;
+      transform:rotate(-10deg);
+    }
+
+    .template{
+      position:relative;
+      width:420px;
+      max-width:100%;
+      border-radius:28px;
+      overflow:hidden;
+      background:white;
+      box-shadow:0 10px 40px rgba(255,105,180,0.18);
+      border:8px solid rgba(255,255,255,0.7);
+      animation: cozyGlow 4s ease-in-out infinite alternate,
+                 cardPopIn 0.7s ease-out;
+      transform-origin:center center;
+    }
+
+    @keyframes cozyGlow{
+      0%{box-shadow:0 10px 35px rgba(255,105,180,0.16)}
+      100%{box-shadow:0 14px 50px rgba(255,105,180,0.28)}
+    }
+
+    @keyframes cardPopIn{
+      0%{transform:scale(0.9) translateY(12px); opacity:0;}
+      60%{transform:scale(1.02) translateY(0); opacity:1;}
+      100%{transform:scale(1) translateY(0); opacity:1;}
+    }
+
+    .template-image {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      aspect-ratio: 9 / 16; /* Matches the vertical phone-wallpaper style of your template */
+    }
+
+    .user-photo{
+      position:absolute;
+      width:150px;
+      height:150px;
+      object-fit:cover;
+      border-radius:16px;
+      display:none;
+      cursor:move;
+      touch-action:none;
+      box-shadow:0 6px 18px rgba(0,0,0,0.15);
+      transform-origin:center center;
+      transition:transform 0.08s linear;
+    }
+
+    #userImage1{ top:120px; left:70px; }
+    #userImage2{ top:170px; right:60px; }
+    #userImage3{ bottom:60px; left:110px; }
+
+    .floating-heart{
+      position:fixed;
+      bottom:-40px;
+      font-size:22px;
+      color:#de0853;
+      pointer-events:none;
+      animation: riseHeart 9s linear infinite;
+      opacity:0.75;
+      z-index:0;
+    }
+
+    @keyframes riseHeart{
+      0%{transform:translateY(0) scale(0.8); opacity:0}
+      10%{opacity:1}
+      100%{transform:translateY(-120vh) translateX(30px) scale(1.3); opacity:0}
+    }
+
+    /* SCREENSHOT BUBBLE */
+    .ss-bubble{
+      position:absolute;
+      right:-10px;
+      bottom:-10px;
+      background:rgba(255,255,255,0.96);
+      border-radius:18px;
+      padding:10px 14px;
+      box-shadow:0 8px 18px rgba(255,79,139,0.25);
+      border:1px solid #ffd1e8;
+      font-size:0.8rem;
+      color:#ff4f8b;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      max-width:230px;
+      opacity:0;
+      pointer-events:none;
+      transform:translateY(10px);
+      transition:opacity 0.3s ease, transform 0.3s ease;
+      z-index:10;
+    }
+
+    .ss-bubble.show{
+      opacity:1;
+      pointer-events:auto;
+      transform:translateY(0);
+    }
+
+    .ss-bubble-heart{
+      font-size:1.1rem;
+    }
+
+    /* SCREENSHOT MODE: center and scale frame */
+    .screenshot-mode .editor-layout{
+      justify-content:center;
+      padding:20px 10px 30px;
+    }
+
+    .screenshot-mode .sidebar{
+      opacity:0;
+      pointer-events:none;
+      transform:scale(0.97);
+      transition:opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .screenshot-mode .canvas-area{
+      justify-content:center;
+    }
+
+    /* desktop / big screens */
+    .screenshot-mode .frame-wrapper{
+      transform:scale(0.8);
+      transition:transform 0.3s ease;
+    }
+
+    @media(max-width:100px){
+      .editor-layout{
+        flex-direction:column;
+        align-items:center;
+      }
+      .sidebar{
+        width:100%;
+      }
+      .screenshot-mode .sidebar{
+        display:none;
+      }
+      .screenshot-mode .frame-wrapper{
+        transform:scale(0.7);
+      }
+    }
+
+    @media(max-width:500px){
+      .template{
+        width:100%;
+      }
+      .topbar h1{
+        font-size:1.8rem;
+      }
+      .user-photo{
+        width:120px;
+        height:120px;
+      }
+      .zoom-controls{
+        flex-direction:column;
+      }
+      .zoom-controls button{
+        width:100%;
+      }
+      .screenshot-mode .frame-wrapper{
+        transform:scale(0.6);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sparkles" id="sparkles"></div>
+
+  <div class="topbar">
+    <h1>CLICK</h1>
+    <button onclick="downloadImage()">Download Edit</button>
+  </div>
+
+  <div class="editor-layout">
+    <div class="sidebar">
+      <h2>Customize</h2>
+
+      <!-- three upload inputs + URL inputs -->
+      <label for="upload1">Main image</label>
+      <input type="file" id="upload1" accept="image/*">
+      <input type="text" id="url1" placeholder="or paste image URL for main image">
+
+      <label for="upload2">Sticker image 1</label>
+      <input type="file" id="upload2" accept="image/*">
+      <input type="text" id="url2" placeholder="or paste image URL for sticker 1">
+
+      <label for="upload3">Sticker image 2</label>
+      <input type="file" id="upload3" accept="image/*">
+      <input type="text" id="url3" placeholder="or paste image URL for sticker 2">
+
+      <p class="cute-line">
+        Upload your images and drag them into the scrapbook template.
+        Resize, rotate, zoom, and tilt freely.
+      </p>
+
+      <div class="tools">
+        <button onclick="rotateImage()">Rotate</button>
+        <button onclick="tiltLeft()">Tilt Left</button>
+        <button onclick="tiltRight()">Tilt Right</button>
+        <button onclick="resetImage()">Reset</button>
+      </div>
+
+      <div class="zoom-controls">
+        <button onclick="zoomOut()">Zoom Out</button>
+        <button onclick="zoomIn()">Zoom In</button>
+      </div>
+
+      <div style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">
+        <button onclick="toggleScreenshotMode()">Screenshot View</button>
+      </div>
+
+      <div id="ssBubble" class="ss-bubble">
+        <span class="ss-bubble-heart"></span>
+        <span>
+          Screenshot tip: turn your phone to portrait, tap Screenshot View, then take a full-screen screenshot to capture the whole template.
+        </span>
+      </div>
+
+      <div class="hint">layer your photos like a dreamy collage</div>
+    </div>
+
+    <div class="canvas-area">
+      <div class="frame-wrapper">
+        <div class="frame-label">click scrapbook</div>
+        <div class="frame-heart">♡</div>
+        <div class="template" id="capture">
+          <img
+            src="template.jpg"
+            class="template-image"
+          >
+          <!-- three user images -->
+          <img id="userImage1" class="user-photo">
+          <img id="userImage2" class="user-photo">
+          <img id="userImage3" class="user-photo">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const sparkles = document.getElementById("sparkles");
+
+    const uploads = [
+      document.getElementById("upload1"),
+      document.getElementById("upload2"),
+      document.getElementById("upload3"),
+    ];
+
+    const urlInputs = [
+      document.getElementById("url1"),
+      document.getElementById("url2"),
+      document.getElementById("url3"),
+    ];
+
+    const images = [
+      document.getElementById("userImage1"),
+      document.getElementById("userImage2"),
+      document.getElementById("userImage3"),
+    ];
+
+    const transforms = [
+      { rotation: 0, scale: 1, x: 0, y: 0 },
+      { rotation: 0, scale: 1, x: 0, y: 0 },
+      { rotation: 0, scale: 1, x: 0, y: 0 },
+    ];
+
+    let activeIndex = 0;
+
+    uploads.forEach((input, index) => {
+      input.addEventListener("change", function(){
+        const file = this.files[0];
+        if(file){
+          const reader = new FileReader();
+          reader.onload = function(e){
+            images[index].src = e.target.result;
+            images[index].style.display = "block";
+            resetSingle(index);
+            activeIndex = index;
+          }
+          reader.readAsDataURL(file);
+        }
+      });
+    });
+
+    urlInputs.forEach((input, index) => {
+      function applyUrl(){
+        const url = input.value.trim();
+        if(!url) return;
+        images[index].src = url;
+        images[index].style.display = "block";
+        resetSingle(index);
+        activeIndex = index;
+      }
+      input.addEventListener("change", applyUrl);
+      input.addEventListener("keydown", (e)=>{
+        if(e.key === "Enter"){
+          e.preventDefault();
+          applyUrl();
+        }
+      });
+    });
+
+    images.forEach((img, index) => {
+      interact(img)
+        .draggable({
+          listeners: {
+            move(event){
+              const t = transforms[index];
+              t.x += event.dx;
+              t.y += event.dy;
+              applyTransform(index);
+              img.setAttribute('data-x', t.x);
+              img.setAttribute('data-y', t.y);
+              activeIndex = index;
+            }
+          }
+        })
+        .resizable({
+          edges:{ left:true, right:true, top:true, bottom:true },
+          listeners:{
+            move(event){
+              const t = transforms[index];
+              let x = t.x;
+              let y = t.y;
+
+              img.style.width = event.rect.width + 'px';
+              img.style.height = event.rect.height + 'px';
+
+              x += event.deltaRect.left;
+              y += event.deltaRect.top;
+
+              t.x = x;
+              t.y = y;
+
+              applyTransform(index);
+              img.setAttribute('data-x', x);
+              img.setAttribute('data-y', y);
+              activeIndex = index;
+            }
+          }
+        });
+
+      img.addEventListener("mousedown", () => activeIndex = index);
+      img.addEventListener("touchstart", () => activeIndex = index);
+    });
+
+    function applyTransform(index){
+      const img = images[index];
+      const t = transforms[index];
+      img.style.transform =
+        `translate(${t.x}px, ${t.y}px) rotate(${t.rotation}deg) scale(${t.scale})`;
+    }
+
+    function rotateImage(){
+      const t = transforms[activeIndex];
+      t.rotation += 90;
+      applyTransform(activeIndex);
+    }
+
+    function tiltLeft(){
+      const t = transforms[activeIndex];
+      t.rotation -= 10;
+      applyTransform(activeIndex);
+    }
+
+    function tiltRight(){
+      const t = transforms[activeIndex];
+      t.rotation += 10;
+      applyTransform(activeIndex);
+    }
+
+    function zoomIn(){
+      const t = transforms[activeIndex];
+      t.scale = Math.min(t.scale + 0.1, 2.5);
+      applyTransform(activeIndex);
+    }
+
+    function zoomOut(){
+      const t = transforms[activeIndex];
+      t.scale = Math.max(t.scale - 0.1, 0.3);
+      applyTransform(activeIndex);
+    }
+
+    function resetSingle(index){
+      const img = images[index];
+      const t = transforms[index];
+      t.rotation = 0;
+      t.scale = 1;
+      t.x = 0;
+      t.y = 0;
+      img.style.width = "150px";
+      img.style.height = "150px";
+      img.setAttribute('data-x',0);
+      img.setAttribute('data-y',0);
+      applyTransform(index);
+    }
+
+    function resetImage(){
+      transforms.forEach((_, i) => resetSingle(i));
+    }
+
+    function downloadImage(){
+      const node = document.querySelector("#capture");
+
+      setTimeout(() => {
+        html2canvas(node, {
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: null,
+          scale: 2
+        }).then(canvas => {
+          try {
+            const dataURL = canvas.toDataURL("image/png");
+            const link = document.createElement("a");
+            link.download = "click-edit.png";
+            link.href = dataURL;
+            link.click();
+          } catch (e) {
+            alert(
+              "Sorry, your browser blocked the download.\n" +
+              "Tap 'Screenshot View' and take a full-screen screenshot instead."
+            );
+            console.error(e);
+          }
+        });
+      }, 300);
+    }
+
+    // Screenshot view: hide sidebar, center frame, show bubble
+    function toggleScreenshotMode(){
+      document.body.classList.toggle("screenshot-mode");
+      const bubble = document.getElementById("ssBubble");
+      bubble.classList.add("show");
+      setTimeout(() => {
+        bubble.classList.remove("show");
+      }, 8000);
+    }
+
+    function createSparkles(){
+      for(let i=0; i<22; i++){
+        const s = document.createElement("span");
+        s.style.left = Math.random() * 100 + "vw";
+        s.style.bottom = Math.random() * -20 + "px";
+        s.style.animationDuration = (8 + Math.random() * 8) + "s";
+        s.style.animationDelay = (Math.random() * 6) + "s";
+        s.style.width = s.style.height = (6 + Math.random() * 10) + "px";
+        sparkles.appendChild(s);
+      }
+    }
+
+    function createHearts(){
+      for(let i=0; i<10; i++){
+        const h = document.createElement("div");
+        h.className = "floating-heart";
+        h.textContent = Math.random() > 0.5 ? "♡" : "♥";
+        h.style.left = Math.random() * 100 + "vw";
+        h.style.animationDuration = (7 + Math.random() * 6) + "s";
+        h.style.animationDelay = Math.random() * 5 + "s";
+        h.style.fontSize = (18 + Math.random() * 18) + "px";
+        document.body.appendChild(h);
+      }
+    }
+
+    createSparkles();
+    createHearts();
+  </script>
+</body>
+</html>
